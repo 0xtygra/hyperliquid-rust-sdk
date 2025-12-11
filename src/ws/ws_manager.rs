@@ -257,6 +257,41 @@ impl WsManager {
             .0)
     }
 
+    fn get_possible_identifiers(message: &Message) -> Result<Vec<String>> {
+        let mut identifiers = Vec::new();
+        
+        match message {
+            Message::AllMids(_) => {
+                // Try both None and common dex values
+                for dex in [None, Some("xyz".to_string()), Some("hyna".to_string())] {
+                    if let Ok(id) = serde_json::to_string(&Subscription::AllMids { dex }) {
+                        identifiers.push(id);
+                    }
+                }
+            }
+            Message::Candle(candle) => {
+                // Try both None and common dex values for candles
+                for dex in [None, Some("xyz".to_string()), Some("hyna".to_string())] {
+                    if let Ok(id) = serde_json::to_string(&Subscription::Candle {
+                        coin: candle.data.coin.clone(),
+                        interval: candle.data.interval.clone(),
+                        dex,
+                    }) {
+                        identifiers.push(id);
+                    }
+                }
+            }
+            _ => {
+                // For other message types, use the old single identifier logic
+                if let Ok(id) = WsManager::get_identifier(message) {
+                    identifiers.push(id);
+                }
+            }
+        }
+        
+        Ok(identifiers)
+    }
+
     fn get_identifier(message: &Message) -> Result<String> {
         match message {
             Message::AllMids(_) => serde_json::to_string(&Subscription::AllMids { dex: None })
@@ -343,21 +378,27 @@ impl WsManager {
                     }
                     let message = serde_json::from_str::<Message>(&data)
                         .map_err(|e| Error::JsonParse(e.to_string()))?;
-                    let identifier = WsManager::get_identifier(&message)?;
-                    if identifier.is_empty() {
+                    // Try to find matching subscriptions for this message
+                    // We need to try multiple dex values since the message doesn't contain dex info
+                    let possible_identifiers = WsManager::get_possible_identifiers(&message)?;
+                    if possible_identifiers.is_empty() {
                         return Ok(());
                     }
 
                     let mut subscriptions = subscriptions.lock().await;
                     let mut res = Ok(());
-                    if let Some(subscription_datas) = subscriptions.get_mut(&identifier) {
-                        for subscription_data in subscription_datas {
-                            if let Err(e) = subscription_data
-                                .sending_channel
-                                .send(message.clone())
-                                .map_err(|e| Error::WsSend(e.to_string()))
-                            {
-                                res = Err(e);
+                    
+                    // Try each possible identifier until we find matching subscriptions
+                    for identifier in possible_identifiers {
+                        if let Some(subscription_datas) = subscriptions.get_mut(&identifier) {
+                            for subscription_data in subscription_datas {
+                                if let Err(e) = subscription_data
+                                    .sending_channel
+                                    .send(message.clone())
+                                    .map_err(|e| Error::WsSend(e.to_string()))
+                                {
+                                    res = Err(e);
+                                }
                             }
                         }
                     }
