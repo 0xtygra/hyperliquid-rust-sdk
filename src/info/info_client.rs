@@ -56,6 +56,7 @@ pub enum InfoRequest {
     },
     Meta,
     MetaAndAssetCtxs {
+        #[serde(skip_serializing_if = "Option::is_none")]
         dex: Option<String>,
     },
     SpotMeta,
