@@ -214,8 +214,11 @@ impl InfoClient {
         self.send_info_request(input).await
     }
 
-    pub async fn meta_and_asset_contexts(&self, dex: Option<String>) -> Result<(Meta, Vec<AssetContext>)> {
-        let input = InfoRequest::MetaAndAssetCtxs { dex };
+    pub async fn meta_and_asset_contexts(
+        &self,
+        dex: impl Into<Option<String>>,
+    ) -> Result<(Meta, Vec<AssetContext>)> {
+        let input = InfoRequest::MetaAndAssetCtxs { dex: dex.into() };
         self.send_info_request(input).await
     }
 
