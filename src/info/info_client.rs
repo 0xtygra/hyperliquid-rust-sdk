@@ -55,7 +55,9 @@ pub enum InfoRequest {
         oid: u64,
     },
     Meta,
-    MetaAndAssetCtxs,
+    MetaAndAssetCtxs {
+        dex: Option<String>,
+    },
     SpotMeta,
     SpotMetaAndAssetCtxs,
     AllMids,
@@ -212,8 +214,8 @@ impl InfoClient {
         self.send_info_request(input).await
     }
 
-    pub async fn meta_and_asset_contexts(&self) -> Result<(Meta, Vec<AssetContext>)> {
-        let input = InfoRequest::MetaAndAssetCtxs;
+    pub async fn meta_and_asset_contexts(&self, dex: Option<String>) -> Result<(Meta, Vec<AssetContext>)> {
+        let input = InfoRequest::MetaAndAssetCtxs { dex };
         self.send_info_request(input).await
     }
 
