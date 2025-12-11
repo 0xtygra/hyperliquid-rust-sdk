@@ -54,20 +54,51 @@ pub(crate) struct WsManager {
 #[serde(tag = "type")]
 #[serde(rename_all = "camelCase")]
 pub enum Subscription {
-    AllMids,
-    Notification { user: Address },
-    WebData2 { user: Address },
-    Candle { coin: String, interval: String },
-    L2Book { coin: String },
-    Trades { coin: String },
-    OrderUpdates { user: Address },
-    UserEvents { user: Address },
-    UserFills { user: Address },
-    UserFundings { user: Address },
-    UserNonFundingLedgerUpdates { user: Address },
-    ActiveAssetCtx { coin: String },
-    ActiveAssetData { user: Address, coin: String },
-    Bbo { coin: String },
+    AllMids {
+        dex: Option<String>,
+    },
+    Notification {
+        user: Address,
+    },
+    WebData2 {
+        user: Address,
+    },
+    Candle {
+        coin: String,
+        interval: String,
+        dex: Option<String>,
+    },
+    L2Book {
+        coin: String,
+    },
+    Trades {
+        coin: String,
+    },
+    OrderUpdates {
+        user: Address,
+    },
+    UserEvents {
+        user: Address,
+    },
+    UserFills {
+        user: Address,
+    },
+    UserFundings {
+        user: Address,
+    },
+    UserNonFundingLedgerUpdates {
+        user: Address,
+    },
+    ActiveAssetCtx {
+        coin: String,
+    },
+    ActiveAssetData {
+        user: Address,
+        coin: String,
+    },
+    Bbo {
+        coin: String,
+    },
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -228,7 +259,7 @@ impl WsManager {
 
     fn get_identifier(message: &Message) -> Result<String> {
         match message {
-            Message::AllMids(_) => serde_json::to_string(&Subscription::AllMids)
+            Message::AllMids(_) => serde_json::to_string(&Subscription::AllMids { dex: None })
                 .map_err(|e| Error::JsonParse(e.to_string())),
             Message::User(_) => Ok("userEvents".to_string()),
             Message::UserFills(fills) => serde_json::to_string(&Subscription::UserFills {
@@ -252,6 +283,7 @@ impl WsManager {
             Message::Candle(candle) => serde_json::to_string(&Subscription::Candle {
                 coin: candle.data.coin.clone(),
                 interval: candle.data.interval.clone(),
+                dex: None,
             })
             .map_err(|e| Error::JsonParse(e.to_string())),
             Message::OrderUpdates(_) => Ok("orderUpdates".to_string()),
